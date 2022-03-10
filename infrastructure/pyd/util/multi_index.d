@@ -167,7 +167,9 @@ bidirectional range
             @property save(){ return this; }
 
             void popFront()
-            in (_front !is _front.index!N.next) {
+            in{
+                assert(_front !is _front.index!N.next);
+            }body{
                 _front = _front.index!N.next;
             }
 
@@ -188,59 +190,65 @@ bidirectional range
             // old: a <-> b, null <- node -> null
             // new: a <-> node <-> b
             void insertNext(typeof(this)* node) nothrow
-            in (node !is null)
-            in (node.index!N.prev is null,
-                    format("node.prev = %x", node.index!N.prev))
-            in (node.index!N.next is null,
-                    format("node.next = %x", node.index!N.next))
-            {
-                typeof(this)* n = next;
-                next = node;
-                node.index!N.prev = &this;
-                if(n !is null) n.index!N.prev = node;
-                node.index!N.next = n;
-            }
+                in{
+                    assert(node !is null);
+                    assert(node.index!N.prev is null,
+                            format("node.prev = %x",node.index!N.prev));
+                    assert(node.index!N.next is null,
+                            format("node.next = %x",node.index!N.next));
+                }body{
+                    typeof(this)* n = next;
+                    next = node;
+                    node.index!N.prev = &this;
+                    if(n !is null) n.index!N.prev = node;
+                    node.index!N.next = n;
+                }
 
             // a,b = this, this.prev; then
             // old: b <-> a, null <- node -> null
             // new: b <-> node <-> a
             void insertPrev(typeof(this)* node) nothrow
-            in (node !is null)
-            in (node.index!N.prev is null,
-                    format("node.prev = %x", node.index!N.prev))
-            in (node.index!N.next is null,
-                    format("node.next = %x", node.index!N.next))
-            {
-                typeof(this)* p = prev;
-                if(p !is null) p.index!N.next = node;
-                node.index!N.prev = p;
-                prev = node;
-                node.index!N.next = &this;
-            }
+                in{
+                    assert(node !is null);
+                    assert(node.index!N.prev is null,
+                            format("node.prev = %x",node.index!N.prev));
+                    assert(node.index!N.next is null,
+                            format("node.next = %x",node.index!N.next));
+                }body{
+                    typeof(this)* p = prev;
+                    if(p !is null) p.index!N.next = node;
+                    node.index!N.prev = p;
+                    prev = node;
+                    node.index!N.next = &this;
+                }
 
             // a,b,c = this, this.next, this.next.next; then
             // old: a <-> b <-> c
             // new: a <-> c, null <- b -> null
             typeof(this)* removeNext() nothrow
-            in (next) {
-                typeof(this)* n = next, nn = n.index!N.next;
-                next = nn;
-                if(nn) nn.index!N.prev = &this;
-                n.index!N.prev = n.index!N.next = null;
-                return n;
-            }
+                in{
+                    assert(next);
+                }body{
+                    typeof(this)* n = next, nn = n.index!N.next;
+                    next = nn;
+                    if(nn) nn.index!N.prev = &this;
+                    n.index!N.prev = n.index!N.next = null;
+                    return n;
+                }
 
             // a,b,c = this, this.prev, this.prev.prev; then
             // old: c <-> b <-> a
             // new: c <-> a, null <- b -> null
             typeof(this)* removePrev() nothrow
-            in (prev) {
-                typeof(this)* p = prev, pp = p.index!N.prev;
-                prev = pp;
-                if(pp) pp.index!N.next = &this;
-                p.index!N.prev = p.index!N.next = null;
-                return p;
-            }
+                in{
+                    assert(prev);
+                }body{
+                    typeof(this)* p = prev, pp = p.index!N.prev;
+                    prev = pp;
+                    if(pp) pp.index!N.next = &this;
+                    p.index!N.prev = p.index!N.next = null;
+                    return p;
+                }
         }
 
  /// Sequenced index implementation
@@ -352,7 +360,7 @@ Complexity: $(BIGOH 1)
                     assert(moveme.front.node);
                     assert(tohere.front.node);
                 }
-            }do{
+            }body{
                 static if(is(PosRange == SeqRange)) {
                     ThisNode* m = moveme.front_node;
                     ThisNode* n = tohere.front_node;
@@ -386,7 +394,7 @@ Complexity: $(BIGOH 1)
                     assert(moveme.back.node);
                     assert(tohere.back.node);
                 }
-            }do{
+            }body{
                 static if(is(PosRange == SeqRange)) {
                     ThisNode* m = moveme.back_node;
                     ThisNode* n = tohere.back_node;
@@ -427,37 +435,38 @@ Complexity: ??
             }
 
             bool _insertFront(ThisNode* node) nothrow
-            in (node !is null)
-            in (node.index!N.prev is null)
-            in (node.index!N.next is null)
-            {
-                if(_front is null){
-                    debug assert(_back is null);
-                    _front = _back = node;
-                }else{
-                    _front.index!N.insertPrev(node);
-                    _front = node;
-                }
+                in{
+                    assert(node !is null);
+                    assert(node.index!N.prev is null);
+                    assert(node.index!N.next is null);
+                }body{
+                    if(_front is null){
+                        debug assert(_back is null);
+                        _front = _back = node;
+                    }else{
+                        _front.index!N.insertPrev(node);
+                        _front = node;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
 
             alias _insertBack _Insert;
 
             bool _insertBack(ThisNode* node) nothrow
-            in{
-                debug assert (node !is null);
-            }do{
-                if(_front is null){
-                    debug assert(_back is null);
-                    _front = _back = node;
-                }else{
-                    _back.index!N.insertNext(node);
-                    _back = node;
-                }
+                in{
+                    debug assert (node !is null);
+                }body{
+                    if(_front is null){
+                        debug assert(_back is null);
+                        _front = _back = node;
+                    }else{
+                        _back.index!N.insertNext(node);
+                        _back = node;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
 
 /++
 Inserts every element of stuff not rejected by another index into the front
@@ -558,19 +567,20 @@ Forwards to insertBack
             }
 
             ThisNode* _removeFront()
-            in (_back !is null)
-            in (_front !is null)
-            {
-                ThisNode* n = _front;
-                if(_back == _front){
-                    _back = _front = null;
-                }else{
-                    _front = _front.index!N.next;
-                    n.index!N.next = null;
-                    _front.index!N.prev = null;
+                in{
+                    assert(_back !is null);
+                    assert(_front !is null);
+                }body{
+                    ThisNode* n = _front;
+                    if(_back == _front){
+                        _back = _front = null;
+                    }else{
+                        _front = _front.index!N.next;
+                        n.index!N.next = null;
+                        _front.index!N.prev = null;
+                    }
+                    return n;
                 }
-                return n;
-            }
 
 /++
 Removes the value at the front of the index from the container.
@@ -1232,7 +1242,12 @@ version(PtrHackery){
      *    node.
      */
     Node rotateR()
-    in (_left !is null) {
+        in
+        {
+            assert(_left !is null);
+        }
+    body
+    {
         // sets _left._parent also
         if(isLeftNode)
             parent.index!N.left = _left;
@@ -1270,7 +1285,12 @@ version(PtrHackery){
      *    node.
      */
     Node rotateL()
-    in (_right !is null) {
+        in
+        {
+            assert(_right !is null);
+        }
+    body
+    {
         // sets _right._parent also
         if(isLeftNode)
             parent.index!N.left = _right;
@@ -1294,7 +1314,12 @@ version(PtrHackery){
      * parent which is the marker node.
      */
     @property bool isLeftNode() const
-    in (_parent !is null) {
+        in
+        {
+            assert(_parent !is null);
+        }
+    body
+    {
         return _parent.index!N._left is &this;
     }
 
@@ -1629,7 +1654,7 @@ version(PtrHackery){
     in{
         debug assert( &this !is this.index!N.parentmost.index!N.rightmost,
             "calling prev on _end.rightmost");
-    }do{
+    }body{
         auto n = &this;
         if(n.index!N.right is null)
         {
@@ -1651,7 +1676,7 @@ version(PtrHackery){
     in{
         debug assert( &this !is this.index!N.parentmost.index!N.leftmost,
             "calling prev on _end.leftmost");
-    }do{
+    }body{
         auto n = &this;
         if(n.index!N.left is null)
         {
@@ -2097,7 +2122,7 @@ Complexity: ??
     void _FixPosition(ThisNode* node, KeyType oldPosition, ThisNode* cursor)
         out{
             version(RBDoChecks) _Check();
-        }do{
+        }body{
         static if(allowDuplicates){
             if(cursor){
                 _Remove(node);
@@ -2124,7 +2149,7 @@ Complexity: ??
     bool _NotifyChange(Node node)
     out(r){
         _Check();
-    }do{
+    }body{
         auto newPosition = key(node.value);
         Node next = _end.index!N.rightmost is node ? null : node.index!N.next;
         Node prev = _end.index!N.leftmost  is node ? null : node.index!N.prev;
@@ -2171,7 +2196,7 @@ Complexity: ??
         if (isImplicitlyConvertible!(Stuff, Elem))
         out(r){
             version(RBDoChecks) _Check();
-        }do{
+        }body{
             static if(!allowDuplicates){
                 Node p;
                 if(_find2(key(stuff),p)){
@@ -2198,7 +2223,7 @@ Complexity: ??
                 isImplicitlyConvertible!(ElementType!Stuff, Elem))
         out(r){
             version(RBDoChecks) _Check();
-        }do{
+        }body{
             size_t result = 0;
             foreach(e; stuff)
             {
@@ -2210,7 +2235,7 @@ Complexity: ??
     Node _Remove(Node n)
     out(r){
         version(RBDoChecks) _Check();
-    }do{
+    }body{
         return n.index!N.remove(_end);
     }
 
@@ -2260,7 +2285,7 @@ Complexity: ??
        is(ElementType!R == Position!ThisNode))
     out(r2){
         version(RBDoChecks) _Check();
-    }do{
+    }body{
         while(!r.empty) {
             static if(is(R == OrderedRange)) {
                 auto node = r.front_node;
@@ -2299,7 +2324,7 @@ Complexity: ??
     if(allSatisfy!(implicitlyConverts,Keys))
     out(r){
         version(RBDoChecks) _Check();
-    }do{
+    }body{
         // stack allocation - is ok
         Unqual!KeyType[Keys.length] toRemove;
         foreach(i,k; keys) {
@@ -2314,7 +2339,7 @@ Complexity: ??
     if(isImplicitlyConvertible!(Key, KeyType))
     out(r){
         version(RBDoChecks) _Check();
-    }do{
+    }body{
         size_t count = 0;
 
         foreach(k; keys)
@@ -2341,7 +2366,7 @@ Complexity: ??
             !isDynamicArray!Stuff)
     out(r){
         version(RBDoChecks) _Check();
-    }do{
+    }body{
         //We use array in case stuff is a Range from this RedBlackTree - either
         //directly or indirectly.
 
@@ -2568,7 +2593,7 @@ Complexity: $(BIGOH log(n))
         else assert(_less(lower,upper),
                 format("nonsensical bounds %s%s,%s%s",
                     boundaries[0], lower, upper, boundaries[1]));
-    }do{
+    }body{
         static if(boundaries[0] == '[') {
             auto n_lower = _firstGreaterEqual(lower);
         }else static if(boundaries[0] == '('){
@@ -2593,7 +2618,7 @@ Complexity: $(BIGOH log(n))
         else assert(CompatibleLess.cc_less(lower,upper),
                 format("nonsensical bounds %s%s,%s%s",
                     boundaries[0], lower, upper, boundaries[1]));
-    }do{
+    }body{
         static if(boundaries[0] == '[') {
             auto n_lower = _firstGreaterEqual!CompatibleLess(lower);
         }else static if(boundaries[0] == '('){
@@ -3899,7 +3924,7 @@ $(BIGOH n + n $(SUB k)) for this index ($(BIGOH n $(SUB k)) on a good day)
             if(isImplicitlyConvertible!(Key, KeyType))
             out(r){
                 version(RBDoChecks) _Check();
-            }do{
+            }body{
                 ThisNode* node;
                 size_t index;
                 size_t count = 0;
